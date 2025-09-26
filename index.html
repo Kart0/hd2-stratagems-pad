@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Patriotic Pad</title>
+<style>
+  body{margin:0;font-family:Arial,sans-serif;background:#111;color:#fff;}
+  header{background:#222;padding:10px;display:flex;justify-content:space-between;align-items:center;position:relative;}
+  #toggleMenu{background:#444;color:#fff;border:none;width:44px;height:44px;font-size:1.3em;cursor:pointer;border-radius:8px;display:flex;align-items:center;justify-content:center;}
+
+  /* Título centrado */
+  .page-title{
+    position:absolute;left:50%;transform:translateX(-50%);
+    font-size:1.2em;font-weight:bold;color:#fff;text-align:center;
+  }
+
+  /* Botón gestos con efecto de oscurecimiento cuando OFF */
+  #gestureButton{
+    background:#444;color:#fff;border:none;width:44px;height:44px;font-size:1.3em;
+    cursor:pointer;border-radius:8px;display:flex;align-items:center;justify-content:center;
+    position:relative;
+  }
+  #gestureButton.off::after{
+    content:"";position:absolute;top:0;left:0;right:0;bottom:0;
+    background:rgba(10,10,10,0.6);border-radius:8px;pointer-events:none;
+  }
+
+  /* Panel lateral */
+  #menu{position:fixed;top:0;left:0;height:100%;width:90%;max-width:400px;background:#1a1a1a;
+    overflow-y:auto;transform:translateX(0);transition:transform .3s ease;padding:20px;z-index:9998;}
+  #menu.hide{transform:translateX(-100%);}
+  .menu-header{display:flex;justify-content:space-between;align-items:center;}
+  .menu-buttons{display:flex;gap:10px;}
+  .square-btn{
+    width:44px;height:44px;background:#444;border:none;color:#fff;font-size:1.3em;
+    cursor:pointer;border-radius:8px;display:flex;align-items:center;justify-content:center;
+  }
+
+  h2{margin-top:20px;border-bottom:1px solid #444;padding-bottom:5px;cursor:pointer;}
+  .cat-content{margin-top:10px;display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:12px;}
+  .cat-content.hide{display:none;}
+
+  .estratagema{cursor:pointer;background:#1f1f1f;border:3px solid #aaa;border-radius:8px;padding:8px;
+    display:flex;justify-content:center;align-items:center;transition:background .15s,transform .08s;position:relative;}
+  .estratagema:hover{background:#2c2c2c;transform:scale(1.05);}
+  .estratagema img.icon{width:70px;height:70px;object-fit:cover;border-radius:4px;}
+  .estratagema.selected{border-color:#666;position:relative;}
+  .estratagema.selected::after{
+    content:"";position:absolute;top:0;left:0;right:0;bottom:0;
+    background:rgba(10,10,10,0.6);border-radius:5px;pointer-events:none;
+  }
+  .estratagema.selected img.icon{filter:brightness(0.7);}
+
+  #padContainer{text-align:center;margin:30px auto;}
+  .pad{display:grid;grid-template-columns:repeat(3,80px);grid-template-rows:repeat(3,80px);
+       gap:10px;justify-content:center;margin:20px auto;transition:opacity .3s;}
+  .pad.hidden{opacity:0;pointer-events:none;visibility:hidden;}
+  .btn{background:#333;border:3px solid #888;border-radius:10px;display:flex;
+       align-items:center;justify-content:center;cursor:pointer;user-select:none;padding:8px;}
+  .btn img{width:60px;height:60px;}
+  .btn:active{background:#555;}
+
+  /* Overlay */
+  #overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    opacity:0;pointer-events:none;transition:opacity .3s;z-index:9999;}
+  #overlay.show{opacity:1;pointer-events:auto;}
+  #overlay img{width:200px;height:200px;margin-bottom:20px;}
+
+  #bigName{
+    background:#1f1f1f;
+    border:3px solid #aaa;
+    border-radius:8px;
+    padding:10px 20px;
+    text-align:center;
+    font-size:2em;
+    font-weight:bold;
+    display:inline-block;
+    margin-top:10px;
+    max-width:90%;
+  }
+
+  @media (max-width:768px){
+    #bigName{
+      max-width:fit-content;
+      padding:8px 16px;
+      font-size:2em;
+      margin-left:30px;
+      margin-right:30px;
+    }
+  }
+
+  /* Texto Activando… */
+  #activatingText{
+    margin-top:12px;
+    font-size:1.4em;
+    font-weight:normal;
+    color:#fff;
+  }
+  #activatingText .dots{
+    display:inline-block;
+    width:1.5em;          /* espacio fijo solo para los puntos */
+    text-align:left;
+  }
+
+  #langModal{position:fixed;inset:0;background:rgba(0,0,0,0.7);display:flex;justify-content:center;align-items:center;z-index:10000;}
+  #langModal .box{background:#222;padding:18px;border-radius:12px;text-align:center;}
+  #langModal .box button{margin:8px;padding:10px 18px;font-size:1.05em;cursor:pointer;border:none;border-radius:8px;background:#444;color:white;}
+
+  #categorias::after{content:"";display:block;height:60px;}
+</style>
+</head>
+<body>
+<header>
+  <button id="gestureButton" title="Gestures">👆</button>
+  <div class="page-title" id="pageTitle">PAD PATRIOTICO</div>
+  <button id="toggleMenu" title="Menú">☰</button>
+</header>
+
+<!-- Modal idioma -->
+<div id="langModal" role="dialog" aria-modal="true">
+  <div class="box">
+    <h2>Choose Language / Elige Idioma</h2>
+    <div>
+      <button data-lang="en" id="btnEn">🇺🇸 English</button>
+      <button data-lang="es" id="btnEs">🇪🇸 Español</button>
+    </div>
+  </div>
+</div>
+
+<!-- Panel lateral -->
+<div id="menu">
+  <div class="menu-header">
+    <h1 id="menuTitle">Selecciona Estratagemas</h1>
+    <div class="menu-buttons">
+      <button id="reopenLang" class="square-btn">🌐</button>
+      <button id="menuToggleInner" class="square-btn">☰</button>
+    </div>
+  </div>
+  <div id="categorias"></div>
+</div>
+
+<!-- PAD -->
+<div id="padContainer">
+  <div id="pad" class="pad hidden">
+    <div></div>
+    <div class="btn" data-dir="up"><img src="https://static.wikia.nocookie.net/helldivers_gamepedia/images/5/51/Up_Arrow.png"></div>
+    <div></div>
+    <div class="btn" data-dir="left"><img src="https://static.wikia.nocookie.net/helldivers_gamepedia/images/4/4e/Left_Arrow.png"></div>
+    <div></div>
+    <div class="btn" data-dir="right"><img src="https://static.wikia.nocookie.net/helldivers_gamepedia/images/3/3c/Right_Arrow.png"></div>
+    <div></div>
+    <div class="btn" data-dir="down"><img src="https://static.wikia.nocookie.net/helldivers_gamepedia/images/1/13/Down_Arrow.png"></div>
+    <div></div>
+  </div>
+</div>
+
+<!-- Overlay -->
+<div id="overlay">
+  <img id="bigIcon" src="" alt="">
+  <h2 id="bigName"></h2>
+  <p id="activatingText"></p>
+</div>
+
+<script>
+let startX=0,startY=0;
+let combo=[];
+let estratagemas=[];
+let selectedIds=new Set();
+let gesturesEnabled=true;
+let currentLang='es';
+let lastShown=null;
+let inputLocked=false;
+let activatingInterval;
+
+const gestureBtn=document.getElementById('gestureButton');
+const pad=document.getElementById('pad');
+const overlay=document.getElementById('overlay');
+const pageTitle=document.getElementById('pageTitle');
+const langModal=document.getElementById('langModal');
+const btnEn=document.getElementById('btnEn');
+const btnEs=document.getElementById('btnEs');
+const toggleMenu=document.getElementById('toggleMenu');
+const menu=document.getElementById('menu');
+const reopenLang=document.getElementById('reopenLang');
+const menuToggleInner=document.getElementById('menuToggleInner');
+const categoriasDiv=document.getElementById('categorias');
+
+btnEn.addEventListener('click', ()=> chooseLang('en'));
+btnEs.addEventListener('click', ()=> chooseLang('es'));
+reopenLang.addEventListener('click', ()=> { langModal.style.display='flex'; });
+
+gestureBtn.addEventListener('click', ()=>{
+  gesturesEnabled=!gesturesEnabled;
+  pad.classList.toggle('hidden', gesturesEnabled);
+  gestureBtn.classList.toggle('off', !gesturesEnabled);
+});
+
+toggleMenu.addEventListener('click', ()=> menu.classList.toggle('hide'));
+menuToggleInner.addEventListener('click', ()=> menu.classList.toggle('hide'));
+
+document.addEventListener('touchstart', e=>{
+  if(!gesturesEnabled || inputLocked) return;
+  const t=e.changedTouches[0];
+  startX=t.pageX; startY=t.pageY;
+});
+document.addEventListener('touchend', e=>{
+  if(!gesturesEnabled || inputLocked) return;
+  const t=e.changedTouches[0];
+  const dx=t.pageX-startX;
+  const dy=t.pageY-startY;
+  if(Math.abs(dx)>Math.abs(dy)){
+    if(dx>50)addDir('right'); else if(dx<-50)addDir('left');
+  }else{
+    if(dy>50)addDir('down'); else if(dy<-50)addDir('up');
+  }
+});
+
+document.querySelectorAll('.btn').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    if(inputLocked) return;
+    addDir(b.dataset.dir);
+  });
+});
+
+function chooseLang(lang){
+  currentLang=lang;
+  langModal.style.display='none';
+  pageTitle.textContent=currentLang==='en'?'PATRIOTIC PAD':'PAD PATRIOTICO';
+  document.getElementById('menuTitle').textContent=currentLang==='en'?'Select Stratagems':'Selecciona Estratagemas';
+  renderMenu();
+  updateOverlayLanguage();
+}
+
+fetch('https://raw.githubusercontent.com/Kart0/HD2-STRATAGEMS/refs/heads/main/estratagemas.json')
+  .then(r=>r.json())
+  .then(d=>{estratagemas=d;renderMenu();});
+
+function renderMenu(){
+  categoriasDiv.innerHTML='';
+  const groups={};
+  estratagemas.forEach(it=>{
+    const en=it.category.en, es=it.category.es;
+    const key=en+'||'+es;
+    if(!groups[key])groups[key]={en,es,items:[]};
+    groups[key].items.push(it);
+  });
+  Object.keys(groups).forEach(k=>{
+    const g=groups[k];
+    const catDiv=document.createElement('div');
+    const header=document.createElement('h2');
+    header.textContent=(currentLang==='en'?g.en:g.es)+' ▾';
+    const content=document.createElement('div');
+    content.className='cat-content';
+    g.items.forEach(it=>{
+      const box=document.createElement('div');
+      box.className='estratagema';
+      box.dataset.id=it.id;
+      if(selectedIds.has(it.id))box.classList.add('selected');
+      const img=document.createElement('img');
+      img.className='icon';
+      img.src=it.image;
+      img.alt=it.name[currentLang]||it.name.es||it.name.en;
+      img.title=it.name[currentLang]||it.name.es||it.name.en;
+      box.appendChild(img);
+      box.addEventListener('click',()=>{
+        if(selectedIds.has(it.id)){selectedIds.delete(it.id);box.classList.remove('selected');}
+        else{selectedIds.add(it.id);box.classList.add('selected');}
+      });
+      content.appendChild(box);
+    });
+    header.addEventListener('click',()=>{
+      content.classList.toggle('hide');
+      header.textContent=(currentLang==='en'?g.en:g.es)+(content.classList.contains('hide')?' ▸':' ▾');
+    });
+    catDiv.appendChild(header);
+    catDiv.appendChild(content);
+    categoriasDiv.appendChild(catDiv);
+  });
+}
+
+function addDir(dir){
+  if(inputLocked) return;
+  combo.push(dir);
+  if(combo.length>8) combo.shift();
+  checkCombo();
+}
+
+function checkCombo(){
+  const pool=selectedIds.size>0?estratagemas.filter(e=>selectedIds.has(e.id)):estratagemas;
+  const current=combo.map(s=>String(s).toLowerCase().trim());
+  for(const e of pool){
+    const target=(e.combo||[]).map(s=>String(s).toLowerCase().trim());
+    for(let len=3;len<=7;len++){
+      const tail=current.slice(-len);
+      if(tail.length===target.length && tail.every((v,i)=>v===target[i])){
+        showResult(e);
+        return;
+      }
+    }
+    if(current.length===target.length && current.every((v,i)=>v===target[i])){
+      showResult(e);
+      return;
+    }
+  }
+}
+
+function showResult(e){
+  inputLocked = true;
+  combo = [];
+  lastShown = e;
+  const bigIcon = document.getElementById('bigIcon');
+  const bigName = document.getElementById('bigName');
+  const activating = document.getElementById('activatingText');
+
+  bigIcon.src = e.image;
+  bigName.textContent = e.name[currentLang] || e.name.en || e.name.es;
+
+  // texto base
+  const baseText = currentLang === 'en' ? 'Activating' : 'Activando';
+  clearInterval(activatingInterval);
+  let dots = 0;
+  activating.innerHTML = baseText + ' <span class="dots"></span>';
+  const dotsSpan = activating.querySelector('.dots');
+
+  activatingInterval = setInterval(()=>{
+    dots = (dots + 1) % 4; // 0..3
+    dotsSpan.textContent = '.'.repeat(dots);
+  }, 25aunque);
+
+  overlay.classList.add('show');
+
+  setTimeout(()=>{
+    overlay.classList.remove('show');
+    clearInterval(activatingInterval);
+    inputLocked = false;
+  },3000);
+}
+
+function updateOverlayLanguage(){
+  if(!lastShown) return;
+  if(overlay.classList.contains('show')){
+    document.getElementById('bigName').textContent =
+      lastShown.name[currentLang] || lastShown.name.en || lastShown.name.es;
+  }
+}
+</script>
+</body>
+</html>
