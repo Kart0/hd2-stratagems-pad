@@ -13,7 +13,7 @@
     background:#111;
     color:#fff;
     overflow:hidden;      /* sin barras de desplazamiento */
-    touch-action:none;    /* sin gestos táctiles nativos */
+    touch-action:manipulation; /* 👈 permite desplazamientos en hijos que lo requieran */
   }
 
   header{background:#222;padding:10px;display:flex;justify-content:space-between;align-items:center;position:relative;}
@@ -35,7 +35,7 @@
   }
 
   #menu{position:fixed;top:0;left:0;height:100%;width:90%;max-width:400px;background:#1a1a1a;
-    overflow-y:auto;transform:translateX(0);transition:transform .3s ease;padding:20px;z-index:9998;}
+    overflow-y:auto;transform:translateX(0);transition:transform .3s ease;padding:20px;z-index:9998;touch-action:auto;}
   #menu.hide{transform:translateX(-100%);}
   .menu-header{display:flex;justify-content:space-between;align-items:center;}
   .menu-buttons{display:flex;gap:10px;}
@@ -192,7 +192,6 @@ const menuToggleInner=document.getElementById('menuToggleInner');
 const categoriasDiv=document.getElementById('categorias');
 
 /* Evita desplazamiento accidental en algunos navegadores */
-document.addEventListener('touchmove', e => e.preventDefault(), {passive:false});
 document.addEventListener('gesturestart', e => e.preventDefault());
 
 btnEn.addEventListener('click', ()=> chooseLang('en'));
