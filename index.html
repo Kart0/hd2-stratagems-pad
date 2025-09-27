@@ -2,20 +2,28 @@
 <html lang="es">
 <head>
 <meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="viewport"
+      content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
 <title>Patriotic Pad</title>
 <style>
-  body{margin:0;font-family:Arial,sans-serif;background:#111;color:#fff;}
+  /* Bloquea scroll y gestos de zoom/desplazamiento */
+  html, body{
+    margin:0;
+    font-family:Arial,sans-serif;
+    background:#111;
+    color:#fff;
+    overflow:hidden;      /* sin barras de desplazamiento */
+    touch-action:none;    /* sin gestos táctiles nativos */
+  }
+
   header{background:#222;padding:10px;display:flex;justify-content:space-between;align-items:center;position:relative;}
   #toggleMenu{background:#444;color:#fff;border:none;width:44px;height:44px;font-size:1.3em;cursor:pointer;border-radius:8px;display:flex;align-items:center;justify-content:center;}
 
-  /* Título centrado */
   .page-title{
     position:absolute;left:50%;transform:translateX(-50%);
     font-size:1.2em;font-weight:bold;color:#fff;text-align:center;
   }
 
-  /* Botón gestos con efecto de oscurecimiento cuando OFF */
   #gestureButton{
     background:#444;color:#fff;border:none;width:44px;height:44px;font-size:1.3em;
     cursor:pointer;border-radius:8px;display:flex;align-items:center;justify-content:center;
@@ -26,7 +34,6 @@
     background:rgba(10,10,10,0.6);border-radius:8px;pointer-events:none;
   }
 
-  /* Panel lateral */
   #menu{position:fixed;top:0;left:0;height:100%;width:90%;max-width:400px;background:#1a1a1a;
     overflow-y:auto;transform:translateX(0);transition:transform .3s ease;padding:20px;z-index:9998;}
   #menu.hide{transform:translateX(-100%);}
@@ -61,7 +68,6 @@
   .btn img{width:60px;height:60px;}
   .btn:active{background:#555;}
 
-  /* Overlay */
   #overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);
     display:flex;flex-direction:column;align-items:center;justify-content:center;
     opacity:0;pointer-events:none;transition:opacity .3s;z-index:9999;}
@@ -91,7 +97,6 @@
     }
   }
 
-  /* Texto Activando… */
   #activatingText{
     margin-top:12px;
     font-size:1.4em;
@@ -100,7 +105,7 @@
   }
   #activatingText .dots{
     display:inline-block;
-    width:1.5em;          /* espacio fijo solo para los puntos */
+    width:1.5em;
     text-align:left;
   }
 
@@ -186,6 +191,10 @@ const menu=document.getElementById('menu');
 const reopenLang=document.getElementById('reopenLang');
 const menuToggleInner=document.getElementById('menuToggleInner');
 const categoriasDiv=document.getElementById('categorias');
+
+/* Evita desplazamiento accidental en algunos navegadores */
+document.addEventListener('touchmove', e => e.preventDefault(), {passive:false});
+document.addEventListener('gesturestart', e => e.preventDefault());
 
 btnEn.addEventListener('click', ()=> chooseLang('en'));
 btnEs.addEventListener('click', ()=> chooseLang('es'));
@@ -317,7 +326,6 @@ function showResult(e){
   bigIcon.src = e.image;
   bigName.textContent = e.name[currentLang] || e.name.en || e.name.es;
 
-  // texto base
   const baseText = currentLang === 'en' ? 'Activating' : 'Activando';
   clearInterval(activatingInterval);
   let dots = 0;
@@ -325,7 +333,7 @@ function showResult(e){
   const dotsSpan = activating.querySelector('.dots');
 
   activatingInterval = setInterval(()=>{
-    dots = (dots + 1) % 4; // 0..3
+    dots = (dots + 1) % 4;
     dotsSpan.textContent = '.'.repeat(dots);
   }, 250);
 
