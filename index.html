@@ -168,118 +168,148 @@
 </div>
 
 <script>
-let startX=0,startY=0;
-let combo=[];
-let estratagemas=[];
-let selectedIds=new Set();
-let gesturesEnabled=true;
-let currentLang='es';
-let lastShown=null;
-let inputLocked=false;
+let startX = 0, startY = 0;
+let combo = [];
+let estratagemas = [];
+let selectedIds = new Set();
+let gesturesEnabled = true;
+let currentLang = 'es';
+let lastShown = null;
+let inputLocked = false;
 let activatingInterval;
 
-const gestureBtn=document.getElementById('gestureButton');
-const pad=document.getElementById('pad');
-const overlay=document.getElementById('overlay');
-const pageTitle=document.getElementById('pageTitle');
-const langModal=document.getElementById('langModal');
-const btnEn=document.getElementById('btnEn');
-const btnEs=document.getElementById('btnEs');
-const toggleMenu=document.getElementById('toggleMenu');
-const menu=document.getElementById('menu');
-const reopenLang=document.getElementById('reopenLang');
-const menuToggleInner=document.getElementById('menuToggleInner');
-const categoriasDiv=document.getElementById('categorias');
+const gestureBtn      = document.getElementById('gestureButton');
+const pad             = document.getElementById('pad');
+const overlay         = document.getElementById('overlay');
+const pageTitle       = document.getElementById('pageTitle');
+const langModal       = document.getElementById('langModal');
+const btnEn           = document.getElementById('btnEn');
+const btnEs           = document.getElementById('btnEs');
+const toggleMenu      = document.getElementById('toggleMenu');
+const menu            = document.getElementById('menu');
+const reopenLang      = document.getElementById('reopenLang');
+const menuToggleInner = document.getElementById('menuToggleInner');
+const categoriasDiv   = document.getElementById('categorias');
 
-/* Evita desplazamiento accidental en algunos navegadores */
+/* Evita gestos de zoom del navegador */
 document.addEventListener('gesturestart', e => e.preventDefault());
 
-btnEn.addEventListener('click', ()=> chooseLang('en'));
-btnEs.addEventListener('click', ()=> chooseLang('es'));
-reopenLang.addEventListener('click', ()=> { langModal.style.display='flex'; });
+btnEn.addEventListener('click', () => chooseLang('en'));
+btnEs.addEventListener('click', () => chooseLang('es'));
+reopenLang.addEventListener('click', () => { langModal.style.display = 'flex'; });
 
-gestureBtn.addEventListener('click', ()=>{
-  gesturesEnabled=!gesturesEnabled;
+gestureBtn.addEventListener('click', () => {
+  gesturesEnabled = !gesturesEnabled;
   pad.classList.toggle('hidden', gesturesEnabled);
   gestureBtn.classList.toggle('off', !gesturesEnabled);
 });
 
-toggleMenu.addEventListener('click', ()=> menu.classList.toggle('hide'));
-menuToggleInner.addEventListener('click', ()=> menu.classList.toggle('hide'));
+toggleMenu.addEventListener('click', () => menu.classList.toggle('hide'));
+menuToggleInner.addEventListener('click', () => menu.classList.toggle('hide'));
 
-document.addEventListener('touchstart', e=>{
-  if(!gesturesEnabled || inputLocked) return;
-  const t=e.changedTouches[0];
-  startX=t.pageX; startY=t.pageY;
+/* --- Gestos principales SOLO en la pantalla principal --- */
+document.addEventListener('touchstart', e => {
+  if (!gesturesEnabled || inputLocked) return;
+  if (menu.contains(e.target)) return; // ← Ignorar si empieza dentro del menú
+  const t = e.changedTouches[0];
+  startX = t.pageX;
+  startY = t.pageY;
 });
-document.addEventListener('touchend', e=>{
-  if(!gesturesEnabled || inputLocked) return;
-  const t=e.changedTouches[0];
-  const dx=t.pageX-startX;
-  const dy=t.pageY-startY;
-  if(Math.abs(dx)>Math.abs(dy)){
-    if(dx>50)addDir('right'); else if(dx<-50)addDir('left');
-  }else{
-    if(dy>50)addDir('down'); else if(dy<-50)addDir('up');
+
+document.addEventListener('touchend', e => {
+  if (!gesturesEnabled || inputLocked) return;
+  if (menu.contains(e.target)) return; // ← Ignorar si termina dentro del menú
+  const t  = e.changedTouches[0];
+  const dx = t.pageX - startX;
+  const dy = t.pageY - startY;
+
+  if (Math.abs(dx) > Math.abs(dy)) {
+    if (dx > 50)      addDir('right');
+    else if (dx < -50) addDir('left');
+  } else {
+    if (dy > 50)      addDir('down');
+    else if (dy < -50) addDir('up');
   }
 });
 
-document.querySelectorAll('.btn').forEach(b=>{
-  b.addEventListener('click', ()=>{
-    if(inputLocked) return;
+/* --- NUEVO: Swipe de derecha a izquierda para cerrar el menú lateral --- */
+let menuStartX = 0;
+menu.addEventListener('touchstart', e => {
+  const t = e.changedTouches[0];
+  menuStartX = t.pageX;
+});
+menu.addEventListener('touchend', e => {
+  const t  = e.changedTouches[0];
+  const dx = t.pageX - menuStartX;
+  if (dx < -50) {            // ← Swipe hacia la izquierda
+    menu.classList.add('hide');
+  }
+});
+
+document.querySelectorAll('.btn').forEach(b => {
+  b.addEventListener('click', () => {
+    if (inputLocked) return;
     addDir(b.dataset.dir);
   });
 });
 
-function chooseLang(lang){
-  currentLang=lang;
-  langModal.style.display='none';
-  pageTitle.textContent=currentLang==='en'?'PATRIOTIC PAD':'PAD PATRIOTICO';
-  document.getElementById('menuTitle').textContent=currentLang==='en'?'Select Stratagems':'Selecciona Estratagemas';
+function chooseLang(lang) {
+  currentLang = lang;
+  langModal.style.display = 'none';
+  pageTitle.textContent = currentLang === 'en' ? 'PATRIOTIC PAD' : 'PAD PATRIOTICO';
+  document.getElementById('menuTitle').textContent =
+      currentLang === 'en' ? 'Select Stratagems' : 'Selecciona Estratagemas';
   renderMenu();
   updateOverlayLanguage();
 }
 
 fetch('https://raw.githubusercontent.com/Kart0/HD2-STRATAGEMS/refs/heads/main/estratagemas.json')
-  .then(r=>r.json())
-  .then(d=>{estratagemas=d;renderMenu();});
+  .then(r => r.json())
+  .then(d => { estratagemas = d; renderMenu(); });
 
-function renderMenu(){
-  categoriasDiv.innerHTML='';
-  const groups={};
-  estratagemas.forEach(it=>{
-    const en=it.category.en, es=it.category.es;
-    const key=en+'||'+es;
-    if(!groups[key])groups[key]={en,es,items:[]};
+function renderMenu() {
+  categoriasDiv.innerHTML = '';
+  const groups = {};
+  estratagemas.forEach(it => {
+    const en = it.category.en, es = it.category.es;
+    const key = en + '||' + es;
+    if (!groups[key]) groups[key] = { en, es, items: [] };
     groups[key].items.push(it);
   });
-  Object.keys(groups).forEach(k=>{
-    const g=groups[k];
-    const catDiv=document.createElement('div');
-    const header=document.createElement('h2');
-    header.textContent=(currentLang==='en'?g.en:g.es)+' ▾';
-    const content=document.createElement('div');
-    content.className='cat-content';
-    g.items.forEach(it=>{
-      const box=document.createElement('div');
-      box.className='estratagema';
-      box.dataset.id=it.id;
-      if(selectedIds.has(it.id))box.classList.add('selected');
-      const img=document.createElement('img');
-      img.className='icon';
-      img.src=it.image;
-      img.alt=it.name[currentLang]||it.name.es||it.name.en;
-      img.title=it.name[currentLang]||it.name.es||it.name.en;
+  Object.keys(groups).forEach(k => {
+    const g = groups[k];
+    const catDiv = document.createElement('div');
+    const header = document.createElement('h2');
+    header.textContent = (currentLang === 'en' ? g.en : g.es) + ' ▾';
+    const content = document.createElement('div');
+    content.className = 'cat-content';
+    g.items.forEach(it => {
+      const box = document.createElement('div');
+      box.className = 'estratagema';
+      box.dataset.id = it.id;
+      if (selectedIds.has(it.id)) box.classList.add('selected');
+      const img = document.createElement('img');
+      img.className = 'icon';
+      img.src = it.image;
+      img.alt = it.name[currentLang] || it.name.es || it.name.en;
+      img.title = it.name[currentLang] || it.name.es || it.name.en;
       box.appendChild(img);
-      box.addEventListener('click',()=>{
-        if(selectedIds.has(it.id)){selectedIds.delete(it.id);box.classList.remove('selected');}
-        else{selectedIds.add(it.id);box.classList.add('selected');}
+      box.addEventListener('click', () => {
+        if (selectedIds.has(it.id)) {
+          selectedIds.delete(it.id);
+          box.classList.remove('selected');
+        } else {
+          selectedIds.add(it.id);
+          box.classList.add('selected');
+        }
       });
       content.appendChild(box);
     });
-    header.addEventListener('click',()=>{
+    header.addEventListener('click', () => {
       content.classList.toggle('hide');
-      header.textContent=(currentLang==='en'?g.en:g.es)+(content.classList.contains('hide')?' ▸':' ▾');
+      header.textContent =
+        (currentLang === 'en' ? g.en : g.es) +
+        (content.classList.contains('hide') ? ' ▸' : ' ▾');
     });
     catDiv.appendChild(header);
     catDiv.appendChild(content);
@@ -287,38 +317,40 @@ function renderMenu(){
   });
 }
 
-function addDir(dir){
-  if(inputLocked) return;
+function addDir(dir) {
+  if (inputLocked) return;
   combo.push(dir);
-  if(combo.length>8) combo.shift();
+  if (combo.length > 8) combo.shift();
   checkCombo();
 }
 
-function checkCombo(){
-  const pool=selectedIds.size>0?estratagemas.filter(e=>selectedIds.has(e.id)):estratagemas;
-  const current=combo.map(s=>String(s).toLowerCase().trim());
-  for(const e of pool){
-    const target=(e.combo||[]).map(s=>String(s).toLowerCase().trim());
-    for(let len=3;len<=7;len++){
-      const tail=current.slice(-len);
-      if(tail.length===target.length && tail.every((v,i)=>v===target[i])){
+function checkCombo() {
+  const pool = selectedIds.size > 0 ?
+      estratagemas.filter(e => selectedIds.has(e.id)) :
+      estratagemas;
+  const current = combo.map(s => String(s).toLowerCase().trim());
+  for (const e of pool) {
+    const target = (e.combo || []).map(s => String(s).toLowerCase().trim());
+    for (let len = 3; len <= 7; len++) {
+      const tail = current.slice(-len);
+      if (tail.length === target.length && tail.every((v,i) => v === target[i])) {
         showResult(e);
         return;
       }
     }
-    if(current.length===target.length && current.every((v,i)=>v===target[i])){
+    if (current.length === target.length && current.every((v,i) => v === target[i])) {
       showResult(e);
       return;
     }
   }
 }
 
-function showResult(e){
+function showResult(e) {
   inputLocked = true;
   combo = [];
   lastShown = e;
-  const bigIcon = document.getElementById('bigIcon');
-  const bigName = document.getElementById('bigName');
+  const bigIcon    = document.getElementById('bigIcon');
+  const bigName    = document.getElementById('bigName');
   const activating = document.getElementById('activatingText');
 
   bigIcon.src = e.image;
@@ -330,23 +362,23 @@ function showResult(e){
   activating.innerHTML = baseText + ' <span class="dots"></span>';
   const dotsSpan = activating.querySelector('.dots');
 
-  activatingInterval = setInterval(()=>{
+  activatingInterval = setInterval(() => {
     dots = (dots + 1) % 4;
     dotsSpan.textContent = '.'.repeat(dots);
   }, 250);
 
   overlay.classList.add('show');
 
-  setTimeout(()=>{
+  setTimeout(() => {
     overlay.classList.remove('show');
     clearInterval(activatingInterval);
     inputLocked = false;
-  },3000);
+  }, 3000);
 }
 
-function updateOverlayLanguage(){
-  if(!lastShown) return;
-  if(overlay.classList.contains('show')){
+function updateOverlayLanguage() {
+  if (!lastShown) return;
+  if (overlay.classList.contains('show')) {
     document.getElementById('bigName').textContent =
       lastShown.name[currentLang] || lastShown.name.en || lastShown.name.es;
   }
